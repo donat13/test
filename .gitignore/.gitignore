@@ -1,0 +1,43 @@
+c:tow;
+{
+	if(pData[playerid][pJob] != 4) return SendClientMessage(playerid,CR,"Вы не работаете механиком");
+	if(pTemp[playerid][pMechID] == INVALID_VEHICLE_ID || GetPlayerVehicleID(playerid) != pTemp[playerid][pMechID]) return SendClientMessage(playerid,CR,"Вы должны быть в буксире");
+	if(sscanf(params,"d",params[0])) return SCM(playerid,0xFFa500AA, "Используйте: [id игрока]");
+	new id = params[0];
+	if(!IsPlayerConnected(id) || !pData[id][pMysqlID] || id == playerid) return SendClientMessage(playerid,CR,"Неверный ID / игрок не зарегистрирован");
+	if(GetPlayerState(id) != PLAYER_STATE_DRIVER) return SendClientMessage(playerid,CR,"Игрок должен быть за рулем т.с.");
+	if(GetPlayerDistanceToPlayer(playerid,id) > 10.0 || GetPlayerVirtualWorld(playerid) != GetPlayerVirtualWorld(id)) return SendClientMessage(playerid,CR,"Вы далеко друг от друга");
+	SetPVarInt(playerid,"towoffer",playerid);
+	SetPVarInt(playerid,"towoffee",id);
+	SetPVarInt(id,"towoffer",playerid);
+	SetPVarInt(id,"towoffee",id);
+	new towcode = RandomEx(10000,99999);
+	SetPVarInt(id,"towcode",towcode);
+	SFCM(playerid,CINFO,"Вы предложили {"#cWHITE"}%s {"#cINFO"}отбуксировать его т.с.",pData[id][pNickname]);
+	SPFD(id,dTow,1,"{96e300}Буксир","Согласен","Отмена","{"#cWHITE"}%s предлагает отбуксировать ваше т.с. на место назначения\nЕсли вы согласны введите \"{"#cLIGHTGREEN"}%d{"#cWHITE"}\" (без кавычек) и нажмите ОК",pData[playerid][pNickname],towcode);
+	return 1;
+}
+
+
+case dTow:
+		{
+			if(!response) return 1;
+			new trailer = GetPlayerVehicleID(playerid);
+			if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER || !trailer) return 1;
+			new towcode = GetPVarInt(playerid,"towcode");
+			new offer = GetPVarInt(playerid,"towoffer");
+			new offee = GetPVarInt(playerid,"towoffee");
+			if(offee != playerid) return SendClientMessage(playerid,CR,"Îøèáêà");
+			if(strlen(inputtext) != 5 || strval(inputtext) != towcode) return SendClientMessage(playerid,CR,"Êîä ââåäåí íåâåðíî");
+			if(GetPlayerDistanceToPlayer(playerid,offer) > 10.0 || GetPlayerVirtualWorld(playerid) != GetPlayerVirtualWorld(offer)) return SendClientMessage(playerid,CR,"Âû äàëåêî äðóã îò äðóãà");
+			RemovePlayerFromVehicle(playerid);
+			new vehicleid = pTemp[offer][pMechID];
+			for(new iter=0, i=0; iter<cvector_size(PLAYERS); iter++)
+	    	{
+		        i = cvector_get(PLAYERS, iter);
+				if(IsPlayerConnected(i) && IsVehicleStreamedIn(pTemp[offer][pMechID],i)) SetTimerEx("AttachTrailerToVehicleEx",3000,false,"ii",trailer,vehicleid);
+			}
+			SetPVarInt(playerid,"towvid",vehicleid);
+			SetPVarInt(playerid,"towactvid",trailer);
+		}
+    publics: AttachTrailerToVehicleEx(trailerid,vehicleid) return AttachTrailerToVehicle(trailerid,vehicleid);
